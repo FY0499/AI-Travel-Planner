@@ -1,0 +1,441 @@
+{
+  "name": "Travel Planner Workflow - Fixed & Connected (Repaired)",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1456,
+        816
+      ],
+      "id": "236029d2-ed9d-47f5-8ae5-22ec0ad988bc",
+      "name": "When chat message received"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "أنت مساعد سياحي ذكي. مهمتك استخراج بيانات الرحلة ثم طرح أسئلة توضيحية إذا كانت المعلومات ناقصة.\n\n**الخطوة 1:** استخرج من رسالة المستخدم:\n- اسم المدينة بالإنجليزية (city) — يجب أن يكون اسم مدينة محدد وليس دولة\n  مثال: \"تركيا\" → استفسر عن المدينة، \"إسطنبول\" → Istanbul\n- عدد الأيام (days)\n- عدد المسافرين (travelers)  \n- الميزانية: economy / mid-range / luxury\n- الاهتمامات (interests)\n- البريد الإلكتروني (email)\n\n**الخطوة 2:** إذا كانت أي من هذه المعلومات ناقصة أو غامضة، اسأل المستخدم بشكل ودي:\n- إذا ذكر دولة بدل مدينة: \"أي مدينة تحديداً تريد زيارتها في [الدولة]؟\"\n- إذا لم يحدد الميزانية: \"ما هي ميزانيتك اليومية تقريباً؟ (اقتصادية / متوسطة / فاخرة)\"\n- إذا لم يحدد الاهتمامات: \"ما الذي يهمك أكثر؟ (تاريخ / طبيعة / تسوق / مطاعم / ترفيه)\"\n- إذا لم يذكر إيميل: \"أرسل لي بريدك الإلكتروني لأرسل لك الخطة كاملة\"\n\n**الخطوة 3:** فقط عندما تكون جميع المعلومات مكتملة، أرجع JSON بهذا الشكل الحرفي:\n{\n  \"ready\": true,\n  \"city\": \"Istanbul\",\n  \"city_ar\": \"إسطنبول\",\n  \"days\": 3,\n  \"travelers\": 2,\n  \"budget\": \"mid-range\",\n  \"interests\": [\"history\", \"food\", \"shopping\"],\n  \"email\": \"your-email@example.com\"\n}\n\nإذا المعلومات ناقصة أرجع:\n{\n  \"ready\": false,\n  \"message\": \"سؤالك للمستخدم هنا\"\n}\n\nلا تكتب أي نص خارج الـ JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1232,
+        816
+      ],
+      "id": "bdfa880f-aa23-48e0-a039-8824e6b682fd",
+      "name": "AI Agent - Analysis"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemma-4-31b-it",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -1216,
+        1040
+      ],
+      "id": "e65fd257-9277-4fd4-963d-f8311331525a",
+      "name": "Google Gemini Chat Model"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -1088,
+        1040
+      ],
+      "id": "5cc72eb6-aac7-4726-87a5-83fc837b23e1",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nlet data = raw.output !== undefined ? raw.output : raw;\n\nif (typeof data === 'string') {\n  let cleaned = data.trim()\n    .replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();\n  try {\n    data = JSON.parse(cleaned);\n  } catch (e) {\n    return {\n      ready: \"false\",\n      message: \"عذراً، لم أتمكن من فهم طلبك. هل يمكنك إعادة المحاولة؟\"\n    };\n  }\n}\n\nif (data.ready === false || data.ready === \"false\") {\n  return {\n    ready: \"false\",\n    message: data.message || \"أحتاج معلومات إضافية.\"\n  };\n}\n\nconst city = data.city || '';\nif (!city || city.toLowerCase() === 'unknown') {\n  return {\n    ready: \"false\",\n    message: \"أي مدينة تحديداً تريد زيارتها؟\"\n  };\n}\n\nreturn {\n  ready: \"true\",\n  city: data.city,\n  city_ar: data.city_ar || data.city,\n  days: data.days || 3,\n  travelers: data.travelers || 1,\n  budget: data.budget || 'mid-range',\n  interests: data.interests || ['sightseeing'],\n  email: data.email || ''\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        816
+      ],
+      "id": "b05dffb4-069c-47f4-8528-ba11b39c22e7",
+      "name": "Parse Trip Data"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.opentripmap.com/0.1/en/places/geoname?name={{ encodeURIComponent($json.city) }}&apikey=YOUR_API_KEY",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -432,
+        816
+      ],
+      "id": "c75888a9-7350-48d8-afd1-97deb942665f",
+      "name": "HTTP - Geocode City"
+    },
+    {
+      "parameters": {
+        "jsCode": "// دمج بيانات الرحلة الأصلية مع نتيجة الجيوكودينج (lat/lon) في عنصر واحد\nconst trip = $('Parse Trip Data').first().json;\nconst geo = $input.first().json;\n\nreturn {\n  ...trip,\n  lat: geo.lat,\n  lon: geo.lon\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        816
+      ],
+      "id": "5be1ffc1-200d-44f9-ada3-f2f959178f92",
+      "name": "Combine Trip + Geo"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.openweathermap.org/data/2.5/weather?q={{ $json.city }}&appid=YOUR_API_KEY&units=metric&lang=ar",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        16,
+        624
+      ],
+      "id": "3f03dcf5-783c-4963-8eee-43b31f3f1a49",
+      "name": "HTTP - Weather API"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.opentripmap.com/0.1/en/places/radius?radius=5000&lon={{ $json.lon }}&lat={{ $json.lat }}&kinds=interesting_places&format=json&apikey=YOUR_API_KEY",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        16,
+        816
+      ],
+      "id": "250c5733-887a-48ef-84b7-dfcb42d36439",
+      "name": "HTTP - Places API"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.opentripmap.com/0.1/en/places/radius?radius=5000&lon={{ $json.lon }}&lat={{ $json.lat }}&kinds=accomodations,foods&format=json&apikey=YOUR_API_KEY",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        16,
+        1008
+      ],
+      "id": "6dfe360f-7570-412e-9262-c71170476c2a",
+      "name": "HTTP - Prices API"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        240,
+        800
+      ],
+      "id": "70e1db01-0296-467e-82d3-95c9386d8ea4",
+      "name": "Merge Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// تجميع كل البيانات (الرحلة + الطقس + المعالم + الأسعار) في object واحد منظم\n// يُمرر للـ AI Agent كنص JSON واضح ضمن الرسالة\nconst trip = $('Combine Trip + Geo').first().json;\nconst weather = $('HTTP - Weather API').first().json;\nconst places = $('HTTP - Places API').first().json;\nconst prices = $('HTTP - Prices API').first().json;\n\nreturn {\n  trip,\n  weather,\n  places,\n  prices\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        816
+      ],
+      "id": "86b4d1cd-ed05-442f-9ed0-67772599e839",
+      "name": "Build Itinerary Payload"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=أنت خبير سياحي محترف. بناءً على البيانات التالية صمم خطة سفر شاملة واحترافية.\n\nالبيانات المتوفرة:\n{{ JSON.stringify($json, null, 2) }}\n\nالخطة يجب أن تشمل حرفياً:\n\n## 🏨 توصيات الفنادق (3 خيارات حسب الميزانية)\nلكل فندق: الاسم، الموقع، التقييم (⭐)، السعر التقريبي/ليلة، المميزات\n\n## ☀️ توقعات الطقس خلال فترة الإقامة\nاذكر درجات الحرارة المتوقعة صباحاً ومساءً، وهل يلزم جلب ملابس معينة\n\n## 📅 الجدول اليومي التفصيلي\nلكل يوم:\n- **الصباح (8-12):** اسم المعلم + وصف مختصر + وقت الزيارة المقترح\n- **الظهيرة (12-3):** توصية مطعم محلي أصيل + طبق يجب تجربته + السعر التقريبي\n- **المساء (3-8):** نشاط ترفيهي أو تسوق أو جولة\n- **الليل (8+):** اقتراح اختياري (مطعم راقي / عرض / كافيه)\n\n## 🍽️ أفضل المطاعم في المدينة\n5 مطاعم مع: النوع، التقييم، نطاق السعر، طبق مميز\n\n## 💡 نصائح عملية\n- أفضل وسيلة تنقل\n- الأحياء الموصى بها للسكن\n- تطبيقات مفيدة\n- تحذيرات أو ملاحظات ثقافية\n\n## 💰 تقدير التكلفة الإجمالية\nجدول بالتكاليف: إقامة / طعام / مواصلات / دخول معالم / متنوعات\n\nاجعل المخرج HTML كامل أنيق بـ Inline CSS، ابدأ مباشرة بـ <html> بدون أي نص قبله.\nاستخدم ألوان جميلة وجداول منظمة وإيموجي لتجميل التصميم.",
+        "options": {
+          "systemMessage": "أنت خبير سياحي ومصمم جداول رحلات محترف. ستصلك مصفوفة JSON تحتوي على بيانات الرحلة المطلوبة (المدينة، عدد الأيام، عدد المسافرين، الميزانية، الاهتمامات)، وبيانات الطقس، والمعالم السياحية، والأسعار المتاحة للمدينة المطلوبة.\nبناءً على هذه البيانات المتوفرة فقط، صمم جدولاً سياحياً ممتعاً ومنظماً يغطي عدد الأيام المطلوبة بالضبط.\n\nشروط المخرج النهائي حاسمة:\n1. يجب أن يكون المخرج عبارة عن كود HTML كامل وأنيق جداً (Inline CSS) يحتوي على جداول وتنسيقات مناسبة لملفات PDF.\n2. لا تضع علامات السيرفر مثل ```html في البداية والنهاية.\n3. ابدأ مباشرة بـ <html> ولا تكتب أي نص ترحيبي قبل الكود أو بعده لتجنب إفساد ملف الـ PDF."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        688,
+        816
+      ],
+      "id": "a6166678-892f-4392-94f9-71457b3dc720",
+      "name": "AI Agent - Itinerary Builder"
+    },
+    {
+      "parameters": {
+        "jsCode": "// تنظيف الناتج من أي ```html``` متبقية احتياطاً، ثم تمريره مع باقي البيانات (مثل البريد) للخطوات التالية\nconst raw = $input.first().json;\nlet html = raw.output !== undefined ? raw.output : raw;\nif (typeof html !== 'string') html = JSON.stringify(html);\n\nhtml = html.trim()\n  .replace(/^```html/i, '')\n  .replace(/^```/, '')\n  .replace(/```$/, '')\n  .trim();\n\nconst trip = $('Combine Trip + Geo').first().json;\n\nreturn {\n  html,\n  email: trip.email || '',\n  city_ar: trip.city_ar || trip.city || ''\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        816
+      ],
+      "id": "b50983d8-9da9-4f18-97dd-10c43dc72b2f",
+      "name": "Clean HTML Output"
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "=برنامج رحلتك إلى {{ $('Clean HTML Output').first().json.city_ar }}",
+        "message": "= نتمنى لك رحلة سعيدة!\n{{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1264,
+        816
+      ],
+      "id": "6ab1b0f9-368d-47be-8827-b623b0ef6312",
+      "name": "Send a message"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d01ff0af-c486-41f6-b32b-9238b91287f0",
+              "leftValue": "={{ String($json.ready) }}",
+              "rightValue": "=true ",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -656,
+        816
+      ],
+      "id": "03fd9117-1a1e-4127-b862-c63efdf7b35c",
+      "name": "If"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent - Itinerary Builder",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent - Analysis",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Analysis": {
+      "main": [
+        [
+          {
+            "node": "Parse Trip Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Trip Data": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Geocode City": {
+      "main": [
+        [
+          {
+            "node": "Combine Trip + Geo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Trip + Geo": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Weather API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP - Places API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP - Prices API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Weather API": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Places API": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP - Prices API": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Build Itinerary Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Itinerary Payload": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Itinerary Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Itinerary Builder": {
+      "main": [
+        [
+          {
+            "node": "Clean HTML Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean HTML Output": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Geocode City",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "meta": {},
+  "nodeGroups": [],
+  "tags": []
+}
