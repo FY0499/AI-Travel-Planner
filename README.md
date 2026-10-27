@@ -13,3 +13,5 @@ Do not publish API keys or personal email addresses. This workflow requires cred
 
 ## Project status
 This README documents the project scope and setup expectations. The workflow export must be present in the repository before it can be imported; validate the finished workflow in your own n8n instance before relying on it.
+
+<img width="1144" height="228" alt="image" src="https://github.com/user-attachments/assets/ef949b47-d279-41dd-a8ab-4d0cebe6ee90" />
