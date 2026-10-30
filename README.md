@@ -1,17 +1,29 @@
 # AI Travel Planner
 
-An n8n AI travel-planning workflow that gathers trip preferences and builds an itinerary using external data sources.
+An AI travel planner built with n8n. It collects the user's trip preferences, gathers information from external APIs, and prepares a personalized itinerary that can be sent by email.
+
+<img width="1144" height="228" alt="AI Travel Planner demo" src="https://github.com/user-attachments/assets/ef949b47-d279-41dd-a8ab-4d0cebe6ee90" />
+
+## How it works
+
+1. The user shares trip details such as destination, dates, budget, number of travelers, and interests.
+2. The AI agent organizes the trip information and asks for missing details.
+3. The workflow retrieves location, weather, and places information through APIs.
+4. The itinerary agent prepares the travel plan.
+5. The final result is formatted and sent to the user's email.
+
+## Main features
+
+- Conversational collection of travel preferences.
+- Location and weather information.
+- Places and points-of-interest lookup.
+- AI-generated travel itinerary.
+- Email delivery of the final plan.
+
+## Technologies
+
+n8n, Google Gemini, HTTP Request, external APIs, JavaScript, and Gmail.
 
 ## Setup
-1. Import the workflow JSON into n8n once added to this repository.
-2. Configure your weather and places API credentials using n8n credentials or environment variables.
-3. Reconnect the email node and set the recipient dynamically from the user's request.
-4. Test API responses and email delivery before enabling the workflow.
 
-## Security and testing
-Do not publish API keys or personal email addresses. This workflow requires credential setup and end-to-end testing.
-
-## Project status
-This README documents the project scope and setup expectations. The workflow export must be present in the repository before it can be imported; validate the finished workflow in your own n8n instance before relying on it.
-
-<img width="1144" height="228" alt="image" src="https://github.com/user-attachments/assets/ef949b47-d279-41dd-a8ab-4d0cebe6ee90" />
+Import [workflow.json](./workflow.json) into n8n, configure the required API keys and credentials, then test the chat and email flow.
