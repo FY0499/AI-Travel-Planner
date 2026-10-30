@@ -197,7 +197,7 @@
     },
     {
       "parameters": {
-        "sendTo": "your-email@example.com",
+        "sendTo": "={{ $('Clean HTML Output').first().json.email }}",
         "subject": "=برنامج رحلتك إلى {{ $('Clean HTML Output').first().json.city_ar }}",
         "message": "= نتمنى لك رحلة سعيدة!\n{{ $json.html }}",
         "options": {}
