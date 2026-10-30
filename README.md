@@ -1,8 +1,6 @@
 # AI Travel Planner
 
-I built and tested this workflow from start to finish.
-
-An AI travel planner built with n8n. It collects the user's trip preferences, gathers information from external APIs, and prepares a personalized itinerary that can be sent by email.
+I built this AI travel planner with n8n to collect trip preferences, gather information from external APIs, and prepare a personalized itinerary that can be sent by email.
 
 <img width="1144" height="228" alt="AI Travel Planner demo" src="https://github.com/user-attachments/assets/ef949b47-d279-41dd-a8ab-4d0cebe6ee90" />
 
